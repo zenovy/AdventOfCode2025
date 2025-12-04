@@ -1,6 +1,9 @@
 {
     "compilerOptions": {
-        "types": ["jest", "node"]
+        "types": ["jest", "node"],
+        "lib": ["esnext"],
+        "target": "esnext",
+        "module": "CommonJS"
     },
-    "include": ["test/**/*.test.ts"]
+    "include": ["test/**/*.test.ts", "src/**/*.ts"]
 }

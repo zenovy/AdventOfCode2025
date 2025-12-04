@@ -1,5 +1,5 @@
-const fs = require('fs')
-const path = require('path')
+import fs = require('fs')
+import path = require('path')
 
 type RRange = {
     start: number
@@ -14,17 +14,17 @@ function getRangesFromInput(input: string): RRange[] {
     })
 }
 
-function findPrimeFactors(target: number): number[] {
-    const primeFactors: number[] = []
+function findFactors(target: number): number[] {
+    const factors: number[] = [1]
     for (let i = 2; i <= target / 2; i++) {
         if (target % i === 0) {
-            primeFactors.push(i)
+            factors.push(i)
         }
     }
-    return primeFactors
+    return factors
 }
 
-function findPowerOf10LargerThanNumber(number: number): number {
+function findNumDigits(number: number): number {
     let power = 1
     while (10 ** power <= number) {
         power += 1
@@ -32,40 +32,100 @@ function findPowerOf10LargerThanNumber(number: number): number {
     return power
 }
 
-function getRepeatedNumber(part: number, powerOf10: number, primeFactor: number): number {
-    let result = 0
-    for (let i = 0; i < powerOf10; i += primeFactor) {
-        result += part * (10 ** i)
+function getNumbersRepeatedTwiceUntil(range: RRange): number[] {
+    const number = range.start
+    let limit = range.end
+
+    const numDigits = findNumDigits(number)
+    const numDigitsInLimit = findNumDigits(limit)
+    if (numDigits % 2 !== 0) {
+        if (numDigitsInLimit > numDigits) {
+            return getNumbersRepeatedTwiceUntil({start: 10 ** numDigits, end: range.end})
+        } else {
+            return []
+        }
+    } 
+
+    if (numDigits < numDigitsInLimit) {
+        limit = 10 ** (numDigits) - 1
     }
-    return result
+    const halfPowerOf10 = 10 ** (numDigits / 2)
+    
+    const multiplier = 1 + halfPowerOf10
+    let startPart = Math.floor(number / halfPowerOf10)
+    if (startPart * multiplier < range.start) {
+        startPart += 1
+    }
+    const results: number[] = []
+    for (let part = startPart; part * multiplier <= limit; part++) {
+        results.push(part * multiplier)
+    }
+    if (numDigits + 1 < numDigitsInLimit) {
+        results.push(...getNumbersRepeatedTwiceUntil({start: 10 ** (numDigits + 1), end: range.end}))
+    }
+    return results
 }
 
-function getRepeatingNumbers(range: RRange): number[] {
-    const repeatingNumbers = []
-    const leftPowerOf10 = findPowerOf10LargerThanNumber(range.start)
-    const rightPowerOf10 = findPowerOf10LargerThanNumber(range.end)
-    if (leftPowerOf10 === rightPowerOf10) {
-        const primeFactors = findPrimeFactors(leftPowerOf10)
-        primeFactors.forEach(primeFactor => {
-            const lpart = Math.floor(range.start / (10 ** (leftPowerOf10 - primeFactor)))
-            const rpart = Math.floor(range.end / (10 ** (rightPowerOf10 - primeFactor)))
-            for (let part = lpart; part <= rpart; part++) {
-                const repeatingNumber = getRepeatedNumber(part, leftPowerOf10, primeFactor)
-                repeatingNumbers.push(repeatingNumber)
-            }
-        })
+function getNumbersRepeatedUntil(range: RRange): Set<number> {
+    const number = range.start
+    let limit = range.end
+
+    const numDigits = findNumDigits(number)
+    const numDigitsInLimit = findNumDigits(limit)
+
+    let results: Set<number> = new Set()
+    if (numDigitsInLimit > numDigits) {
+        const numbers = getNumbersRepeatedUntil({start: 10 ** numDigits, end: range.end})
+        results = results.union(numbers)
+        limit = 10 ** (numDigits) - 1
     }
-    return repeatingNumbers
+
+    if (numDigits === 1) {
+        return results
+    }
+
+    const factors = findFactors(findNumDigits(range.start))
+
+    for (const factor of factors) {
+        let multiplier = 1
+        for (let i = factor; i < numDigits; i += factor) {
+            multiplier += 10 ** i
+        }
+        let startPart = Math.floor(number / 10 ** (numDigits - factor))
+        if (startPart * multiplier < range.start) {
+            startPart += 1
+        }
+        for (let part = startPart; part * multiplier <= limit; part++) {
+            results.add(part * multiplier)
+        }
+    }
+    return results
 }
 
-function findInvalidIds(ranges: RRange[]): number[] {
-    return []
+function findInvalidIdsPart1(ranges: RRange[]): number[] {
+    const results = []
+    for (const range of ranges) {
+        const result = getNumbersRepeatedTwiceUntil(range)
+        results.push(...result)
+    }
+    return results
+}
+
+function findInvalidIdsPart2(ranges: RRange[]): number[] {
+    let results: Set<number> = new Set()
+    for (const range of ranges) {
+        const result = getNumbersRepeatedUntil(range)
+        console.log(range)
+        console.log(result)
+        results = results.union(result)
+    }
+    return Array.from(results)
 }
 
 function main() {
     const input = fs.readFileSync(path.join(__dirname, '02_input.txt'), 'utf8')
     const ranges = getRangesFromInput(input)
-    const invalidIds = findInvalidIds(ranges)
+    const invalidIds = findInvalidIdsPart2(ranges)
     const result = invalidIds.reduce((acc, id) => acc + id, 0)
     console.log(result)
 }
@@ -74,4 +134,4 @@ if (require.main === module) {
     main()
 }
 
-export { findPrimeFactors, findPowerOf10LargerThanNumber, getRepeatedNumber, getRepeatingNumbers, findInvalidIds }
+export { findFactors, findNumDigits, getNumbersRepeatedTwiceUntil, getNumbersRepeatedUntil, getRangesFromInput, findInvalidIdsPart1, findInvalidIdsPart2 }
